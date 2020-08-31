@@ -1,88 +1,73 @@
-# Prometheus monitoring demo site
-
-[![Build Status](https://circleci.com/gh/prometheus/demo-site.svg?style=svg)](https://circleci.com/gh/prometheus/demo-site)
-[![License](https://img.shields.io/badge/license-Apache%20License-brightgreen.svg)](https://opensource.org/licenses/Apache-2.0)
-[![IRC](https://img.shields.io/badge/chat-on%20freenode-blue.svg)](http://webchat.freenode.net/?channels=prometheus)
-
-## [demo.do.prometheus.io](https://demo.do.prometheus.io)
-
-This repository provides a demo site for [prometheus](https://github.com/prometheus/prometheus), [alertmanager](https://github.com/prometheus/alertmanager), prometheus exporters, and [grafana](https://github.com/grafana/grafana).
-Site is provisioned with ansible running every day and on all commits to master branch. Everything is fully automated with travis ci pipeline. If you want to check `ansible-playbook` output, go to [last build](https://travis-ci.org/prometheus/demo-site).
-
-Have a look at configuration files in [group_vars/](group_vars).
-
-## Applications
-
-All applications should be running on their default ports.
-
-| App name          | Address (HTTP)                                       | Address (HTTPS)                                           |
-|-------------------|------------------------------------------------------|-----------------------------------------------------------|
-| node_exporter     | [demo.do.prometheus.io:9100][node_exporter_http]     | [node.demo.do.prometheus.io][node_exporter_https]         |
-| prometheus        | [demo.do.prometheus.io:9090][prometheus_http]        | [prometheus.demo.do.prometheus.io][prometheus_https]      |
-| alertmanager      | [demo.do.prometheus.io:9093][alertmanager_http]      | [alertmanager.demo.do.prometheus.io][alertmanager_https]  |
-| grafana           | [demo.do.prometheus.io:3000][grafana_http]           | [grafana.demo.do.prometheus.io][grafana_https]            |
-
-## Important notice
-
-Before running, golang is required to be installed on deployer machine (neccessary to install random_exporter).
-
-Most services can be accessed in two ways (links in [Applications](#Applications) section. As an example, prometheus can be accessed via:
-  - **http**://demo.do.prometheus.io:9090 - default way
-  - **https**://prometheus.do.prometheus.io - workaround which in backgroud communicates with prometheus via insecure, "default" channel mentioned above
-
-This workaround was needed to solve issue [cloudalchemy/demo-site#13](https://github.com/cloudalchemy/demo-site/issues/13).
-
-## Run yourself
-
-You can easily run such setup yourself without much knowledge how any part of this works. You just need to do two things:
+# WSO2 Prometheus monitoring with Grafana
+          
+## How to run
 
 #### Change ansible inventory
 
-First of all you need to configure your inventory, ours is located in [`hosts`](hosts) file. Here you set up your target hosts by changing value of `ansible_host` variable. Also here you can exclude parts of this demo site, so if you don't need our website, you just remove this part:
+First of all you need to configure your inventory, which is located in [`hosts`](hosts) file. Here you set up your target hosts by changing value of `ansible_host` variable.
+
+It have seperate node to install prometheus server,grafana and alert manager. It is defined as `prom-master`. It is under `[prometheus]` group. Then you have to define exporters. They will be installed node-exporters. 
 
 ```
-[web]
-demo
+prom-master ansible_host=host_addr ansible_user=ubuntu
+prom-node1  ansible_host=host_addr ansible_user=ubuntu
+prom-node2  ansible_host=host_addr ansible_user=ubuntu
+
+[prometheus]
+prom-master
+
+[alertmanager]
+prom-master
+
+[grafana]
+prom-master
+
+[exporters]
+prom-node1
+prom-node2
 ```
 
-Accordingly you can exclude grafana, prometheus.
+#### Set passwords
 
-#### Change passwords
-
-For security measures we encrypted some of our passwords, but it is easy to use yours! You can do it by replacing a file located at [`group_vars/grafana/vault`](group_vars/grafana/vault) with following content:
+Currently it sets password for grafana. To change password edit file located at [`group_vars/grafana/vault`](group_vars/grafana/vault) with following content:
 
 ```
 vault_grafana_password: <<INSERT_YOUR_GRAFANA_PASSWORD>>
 ```
 
-#### Run as usual Ansible playbook
+To generate password you can use `ansible-vault stringToEncrypt`. Then it will be asked password to encrypt the string and after you confirmed you can paste it to the file. Remember the password you entered. 
+
+#### Run ansible playbook
+
+You can run script `deploy.sh` located at [`here`](deploy.sh). It needs to provide ansible vault password to decrypt the grafana password you set.
+You can set it as environment variable `export ANSIBLE_VAULT_PASSWORD=vault_password`. After setting the vault password you can run `deploy.sh`
 
 ```bash
-# Download roles
+#!/bin/bash
+
+export ANSIBLE_FORCE_COLOR=true
+
 ansible-galaxy install -r roles/requirements.yml
 
-# Run playbook
-ansible-playbook site.yml
-# or when using vault encrypted variables
-ansible-playbook --vault-id @prompt site.yml
+echo "Creating Vault-file: /tmp/vault"
+/bin/cat <<EOM >/tmp/vault
+${ANSIBLE_VAULT_PASSWORD}
+EOM
+
+ansible-playbook --vault-id /tmp/vault site.yml -vv
+EXIT_CODE=$?
+
+shred /tmp/vault
+
+exit $EXIT_CODE
 ```
 
-# 
+### Default ports for grafana/prometheus/node_exporter
 
-demo site is deployed using [Cloud Alchemy](https://github.com/cloudalchemy) ansible roles.
+- node_exporter_http - 9100
+- prometheus_http - 9090
+- alertmanager_http - 9093
+- grafana_http - 3000
 
-[![DigitalOcean](https://snapshooter.io/powered_by_digital_ocean.png)](https://digitalocean.com)
-
-
-
-[node_exporter_http]: http://demo.do.prometheus.io:9100
-[node_exporter_https]: https://node.demo.do.prometheus.io
-
-[prometheus_http]: http://demo.do.prometheus.io:9090
-[prometheus_https]: https://prometheus.demo.do.prometheus.io
-
-[alertmanager_http]: http://demo.do.prometheus.io:9093
-[alertmanager_https]: https://alertmanager.demo.do.prometheus.io
-
-[grafana_http]: http://demo.do.prometheus.io:3000
-[grafana_https]: https://grafana.demo.do.prometheus.io
+### Add new dashboards
+ Copy dashboard

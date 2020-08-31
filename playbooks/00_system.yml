@@ -7,24 +7,24 @@
     raw: "apt update && apt install -y python3"
     changed_when: false
 
-- name: Apply security restrictions
-  hosts: all
-  roles:
-  - dev-sec.ssh-hardening
-  - dev-sec.os-hardening
-  tasks:
-  - name: Set file descriptor limits
-    pam_limits:
-      dest: '/etc/security/limits.d/20.nofile.conf'
-      domain: '*'
-      limit_type: "{{ item }}"
-      limit_item: nofile
-      value: 16384
-    with_items:
-    - soft
-    - hard
-  vars:
-    ssh_permit_root_login: "without-password"
+# - name: Apply security restrictions
+#   hosts: all
+#   roles:
+#   - dev-sec.ssh-hardening
+#   - dev-sec.os-hardening
+#   tasks:
+#   - name: Set file descriptor limits
+#     pam_limits:
+#       dest: '/etc/security/limits.d/20.nofile.conf'
+#       domain: '*'
+#       limit_type: "{{ item }}"
+#       limit_item: nofile
+#       value: 16384
+#     with_items:
+#     - soft
+#     - hard
+#   vars:
+#     ssh_permit_root_login: "without-password"
 
 - name: Configure automatic updates
   hosts: all
